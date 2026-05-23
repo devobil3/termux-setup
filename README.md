@@ -1,1 +1,1 @@
-# termux-setup
+# termux
