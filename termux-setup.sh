@@ -1,33 +1,40 @@
 #!/bin/bash
 set -e
 
+# Redirect stdin for the setup prompts to the TTY so curl pipe doesn't break them
 while :; do
-    read -p "Enter username: " user
+    read -p "Enter username: " user </dev/tty
     [[ "$user" =~ ^[a-z_][a-z0-9_-]*$ ]] && break || echo "Invalid username."
 done
 
 while :; do
-    read -s -p "Enter password for '$user': " pw; echo
-    read -s -p "Confirm password: " cpw; echo
+    read -s -p "Enter password for '$user': " pw </dev/tty; echo
+    read -s -p "Confirm password: " cpw </dev/tty; echo
     [[ -n "$pw" && "$pw" == "$cpw" ]] && break || echo "Mismatch. Retry."
 done
 
-read -s -p "Enter root password (Press Enter to reuse user password): " r_pw; echo
+read -s -p "Enter root password (Press Enter to reuse user password): " r_pw </dev/tty; echo
 [[ -z "$r_pw" ]] && r_pw="$pw"
 
+# Grab timezone and locale
 tz=$(getprop persist.sys.timezone); tz=${tz:-${TZ:-Etc/UTC}}
 loc=$(getprop persist.sys.locale);  loc="${loc:-en_US}"; loc="${loc//-/_}.UTF-8"
 
-yes|pkg up
+# Upgrade Termux packages completely non-interactively
+# Force apt/dpkg to accept default configs without prompting
+export DEBIAN_FRONTEND=noninteractive
+pkg upgrade -y -o Dpkg::Options::="--force-confold"
+
 pkg i -y x11-repo
 pkg i -y termux-x11-nightly proot-distro pulseaudio virglrenderer-android
 pd i debian
 
+# Run proot-distro configuration using a Here-Doc to keep stdin clean
 pd login debian --shared-tmp -- sh -c '
     set -e
     u="$1"; p="$2"; rp="$3"; t="$4"; l="$5"
 
-    apt update && DEBIAN_FRONTEND=noninteractive apt install -y \
+    apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
         sudo xfce4 xfce4-terminal dbus-x11 locales fastfetch firefox-esr
 
     for g in storage wheel video; do groupadd -f "$g"; done
