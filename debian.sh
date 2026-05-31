@@ -21,7 +21,8 @@ read -s -p "Enter root password (Press Enter to reuse user password): " r_pw </d
 
 start_time=$(date +%s)
 
-pkg install -y termux-api >/dev/null 2>&1 || true
+# Remove dev null
+pkg install -y termux-api >/dev/null 2>&1
 
 termux-toast "Starting Debian installation for $user..."
 
