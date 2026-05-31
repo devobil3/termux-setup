@@ -74,20 +74,30 @@ trap 'tput cnorm; stty echo 2>/dev/null' EXIT
 clr() { printf "\033[3A\r\033[J"; }
 trap 'clr; pkill -9 -f termux.x11 2>/dev/null; killall -9 pulseaudio virgl_test_server_android 2>/dev/null; echo "Aborted."; exit 1' INT
 trap '' TSTP QUIT HUP
-printf "Booting Debian...\n[%-30s] 10s\n[ENTER] Open now  [CTRL+C] Abort\n" ""
 launch() { clr; am start --user 0 -n com.termux.x11/com.termux.x11.MainActivity >/dev/null 2>&1; echo "Success."; exit; }
-bar=""
-for i in $(seq 1 30); do
-    bar+="#"
-    t=$(date +%s%3N)
-    printf "\033[2A\r[%-30s] %ds\033[K\033[2B\r" "$bar" $(( (30-i)/3+1 ))
-    while (( $(date +%s%3N) - t < 333 )); do
-        IFS= read -rs -n1 -t0.05 k; rc=$?
-        [[ $rc -eq 0 && -z "$k" ]] && launch
-        while IFS= read -rs -n1 -t0 _ 2>/dev/null; do :; done
+# Changed progress bar to dynamically adapt to terminal screen size (tput cols) instead of a fixed character width, keeping fill speed proportional to countdown time
+run_countdown() {
+    local secs=$1
+    local cols=$(tput cols 2>/dev/null || echo 80)
+    local bar_width=$(( cols - 12 ))
+    (( bar_width < 10 )) && bar_width=10
+    local steps=$((secs * 3))
+    printf "Booting Debian...\n[%-${bar_width}s] %ds\n[ENTER] Open now  [CTRL+C] Abort\n" "" "$secs"
+    for i in $(seq 1 $steps); do
+        local filled=$(( i * bar_width / steps ))
+        local bar=""
+        for ((j=0; j<filled; j++)); do bar+="#"; done
+        local t=$(date +%s%3N)
+        printf "\033[2A\r[%-${bar_width}s] %ds\033[K\033[2B\r" "$bar" $(( (steps-i)/3+1 ))
+        while (( $(date +%s%3N) - t < 333 )); do
+            IFS= read -rs -n1 -t0.05 k; rc=$?
+            [[ $rc -eq 0 && -z "$k" ]] && launch
+            while IFS= read -rs -n1 -t0 _ 2>/dev/null; do :; done
+        done
     done
-done
-launch
+    launch
+}
+run_countdown 10
 EOF
 
 sed -i "s/__USERNAME__/$user/g" "$PREFIX/bin/debian"
