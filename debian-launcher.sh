@@ -1,6 +1,5 @@
 #!/bin/bash
 
-# Added DEFAULT_COUNTDOWN to allow permanent configuration via -ct flag
 DEFAULT_COUNTDOWN=10
 COUNTDOWN=$DEFAULT_COUNTDOWN
 APP_CMD=""
@@ -10,14 +9,12 @@ while [[ $# -gt 0 ]]; do
         -h|--help)
             echo "Usage: debian [OPTIONS] [COMMAND]"
             echo "Options:"
-            # Updated help text to clarify the new -ct behavior
             echo "  -ct, --countdown-time <secs>  Set default countdown timer (does not launch Debian)"
             echo "  -h, --help                    Show this help message"
             echo "COMMAND: The application to launch at startup (e.g., firefox). Starts alongside XFCE4."
             exit 0
             ;;
         -ct|--countdown-time)
-            # Modified -ct to update the script's default countdown and exit without launching
             if [[ "$2" =~ ^[0-9]+$ ]]; then
                 sed -i "s/^DEFAULT_COUNTDOWN=.*/DEFAULT_COUNTDOWN=$2/" "$0"
                 echo "Default countdown changed to $2 seconds."
@@ -27,7 +24,6 @@ while [[ $# -gt 0 ]]; do
             exit 0
             ;;
         -*)
-            # Added error handling for unknown flags to redirect to help page
             echo "Invalid option: $1"
             "$0" --help
             exit 1
@@ -40,8 +36,8 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ -n "$APP_CMD" ]]; then
-    # Replaced sleep delay with a loop that waits for xfwm4 (the desktop environment window manager) to load before launching the app
-    SESSION_CMD="(while ! pidof xfwm4 >/dev/null; do sleep 1; done; sleep 2; $APP_CMD) & dbus-launch --exit-with-session startxfce4"
+    # Changed the process monitor from xfwm4 to xfce4-panel to ensure the desktop environment is fully initialized
+    SESSION_CMD="(while ! pidof xfce4-panel >/dev/null; do sleep 1; done; sleep 2; $APP_CMD) & dbus-launch --exit-with-session startxfce4"
 else
     SESSION_CMD="dbus-launch --exit-with-session startxfce4"
 fi
