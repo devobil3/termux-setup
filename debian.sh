@@ -3,26 +3,21 @@ set -e
 
 while :; do
     read -p "Enter username: " user </dev/tty
-    # REVERTED: Restored the original error echo
     [[ "$user" =~ ^[a-z_][a-z0-9_-]*$ ]] && break || echo "Invalid username."
 done
 
 while :; do
-    # REVERTED: Changed printf "\n" back to echo
     read -s -p "Enter password for '$user': " pw </dev/tty; echo
     read -s -p "Confirm password: " cpw </dev/tty; echo
-    # REVERTED: Restored the original error echo
     [[ -n "$pw" && "$pw" == "$cpw" ]] && break || echo "Mismatch. Retry."
 done
 
-# REVERTED: Changed printf "\n" back to echo
 read -s -p "Enter root password (Press Enter to reuse user password): " r_pw </dev/tty; echo
 [[ -z "$r_pw" ]] && r_pw="$pw"
 
 start_time=$(date +%s)
 
-# Remove dev null
-pkg install -y termux-api >/dev/null 2>&1
+pkg install -y termux-api >/dev/null 2>&1 || true
 
 termux-toast "Starting Debian installation for $user..."
 
@@ -50,13 +45,11 @@ pd login debian --shared-tmp -- sh -c '
     useradd -m -g users -G wheel,audio,video,storage -s /bin/bash "$u"
     printf "root:%s\n%s:%s\n" "$rp" "$u" "$p" | chpasswd
     
-    # REVERTED: Changed printf back to the original echo
     echo "$u ALL=(ALL:ALL) ALL" >> /etc/sudoers
 
     ln -sf "/usr/share/zoneinfo/$t" /etc/localtime || ln -sf /usr/share/zoneinfo/Etc/UTC /etc/localtime
     printf "en_US.UTF-8 UTF-8\n%s UTF-8\n" "$l" > /etc/locale.gen
     
-    # REVERTED: Changed printf back to the original echo
     locale-gen && echo "LANG=$l" > /etc/locale.conf
 ' bash "$user" "$pw" "$r_pw" "$tz" "$loc"
 
