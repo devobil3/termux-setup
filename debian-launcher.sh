@@ -1,4 +1,30 @@
 #!/bin/bash
+
+# Added argument parsing to handle -h/--help, -ct/--countdown-time, and custom startup applications
+COUNTDOWN=10
+STARTUP_CMD="dbus-launch --exit-with-session startxfce4"
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -h|--help)
+            echo "Usage: debian [OPTIONS] [COMMAND]"
+            echo "Options:"
+            echo "  -ct, --countdown-time <secs>  Set countdown timer before launch (default: 10)"
+            echo "  -h, --help                    Show this help message"
+            echo "COMMAND: The application to launch at startup (e.g., firefox). Defaults to xfce4."
+            exit 0
+            ;;
+        -ct|--countdown-time)
+            COUNTDOWN="$2"
+            shift 2
+            ;;
+        *)
+            STARTUP_CMD="$*"
+            break
+            ;;
+    esac
+done
+
 {
     pkill -9 -f termux.x11
     killall -9 pulseaudio virgl_test_server_android
@@ -7,7 +33,8 @@
     pulseaudio --start --exit-idle-time=-1
     pacmd load-module module-native-protocol-tcp auth-ip-acl=127.0.0.1 auth-anonymous=1
     virgl_test_server_android & V=$!
-    proot-distro login debian --user __USERNAME__ --shared-tmp -- bash -c 'export DISPLAY=:0 PULSE_SERVER=tcp:127.0.0.1 GALLIUM_DRIVER=virpipe MESA_GL_VERSION_OVERRIDE=4.0; dbus-launch --exit-with-session startxfce4'
+    # Modified proot-distro to use double quotes and inject the dynamic $STARTUP_CMD instead of hardcoded xfce4
+    proot-distro login debian --user __USERNAME__ --shared-tmp -- bash -c "export DISPLAY=:0 PULSE_SERVER=tcp:127.0.0.1 GALLIUM_DRIVER=virpipe MESA_GL_VERSION_OVERRIDE=4.0; $STARTUP_CMD"
     kill $X $V 2>/dev/null; pulseaudio --kill
 } >/dev/null 2>&1 &
 
@@ -38,4 +65,5 @@ run_countdown() {
     done
     launch
 }
-run_countdown 10
+# Replaced the hardcoded '10' parameter with the dynamic $COUNTDOWN variable
+run_countdown "$COUNTDOWN"
