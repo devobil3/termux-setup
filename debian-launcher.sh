@@ -1,29 +1,50 @@
 #!/bin/bash
 
-# Added argument parsing to handle -h/--help, -ct/--countdown-time, and custom startup applications
-COUNTDOWN=10
-STARTUP_CMD="dbus-launch --exit-with-session startxfce4"
+# Added DEFAULT_COUNTDOWN to allow permanent configuration via -ct flag
+DEFAULT_COUNTDOWN=10
+COUNTDOWN=$DEFAULT_COUNTDOWN
+APP_CMD=""
 
 while [[ $# -gt 0 ]]; do
     case $1 in
         -h|--help)
             echo "Usage: debian [OPTIONS] [COMMAND]"
             echo "Options:"
-            echo "  -ct, --countdown-time <secs>  Set countdown timer before launch (default: 10)"
+            # Updated help text to clarify the new -ct behavior
+            echo "  -ct, --countdown-time <secs>  Set default countdown timer (does not launch Debian)"
             echo "  -h, --help                    Show this help message"
-            echo "COMMAND: The application to launch at startup (e.g., firefox). Defaults to xfce4."
+            echo "COMMAND: The application to launch at startup (e.g., firefox). Starts alongside XFCE4."
             exit 0
             ;;
         -ct|--countdown-time)
-            COUNTDOWN="$2"
-            shift 2
+            # Modified -ct to update the script's default countdown and exit without launching
+            if [[ "$2" =~ ^[0-9]+$ ]]; then
+                sed -i "s/^DEFAULT_COUNTDOWN=.*/DEFAULT_COUNTDOWN=$2/" "$0"
+                echo "Default countdown changed to $2 seconds."
+            else
+                echo "Error: Invalid time. Must be a number."
+            fi
+            exit 0
+            ;;
+        -*)
+            # Added error handling for unknown flags to redirect to help page
+            echo "Invalid option: $1"
+            "$0" --help
+            exit 1
             ;;
         *)
-            STARTUP_CMD="$*"
+            APP_CMD="$*"
             break
             ;;
     esac
 done
+
+if [[ -n "$APP_CMD" ]]; then
+    # Replaced sleep delay with a loop that waits for xfwm4 (the desktop environment window manager) to load before launching the app
+    SESSION_CMD="(while ! pidof xfwm4 >/dev/null; do sleep 1; done; sleep 2; $APP_CMD) & dbus-launch --exit-with-session startxfce4"
+else
+    SESSION_CMD="dbus-launch --exit-with-session startxfce4"
+fi
 
 {
     pkill -9 -f termux.x11
@@ -33,8 +54,7 @@ done
     pulseaudio --start --exit-idle-time=-1
     pacmd load-module module-native-protocol-tcp auth-ip-acl=127.0.0.1 auth-anonymous=1
     virgl_test_server_android & V=$!
-    # Modified proot-distro to use double quotes and inject the dynamic $STARTUP_CMD instead of hardcoded xfce4
-    proot-distro login debian --user __USERNAME__ --shared-tmp -- bash -c "export DISPLAY=:0 PULSE_SERVER=tcp:127.0.0.1 GALLIUM_DRIVER=virpipe MESA_GL_VERSION_OVERRIDE=4.0; $STARTUP_CMD"
+    proot-distro login debian --user __USERNAME__ --shared-tmp -- bash -c "export DISPLAY=:0 PULSE_SERVER=tcp:127.0.0.1 GALLIUM_DRIVER=virpipe MESA_GL_VERSION_OVERRIDE=4.0; $SESSION_CMD"
     kill $X $V 2>/dev/null; pulseaudio --kill
 } >/dev/null 2>&1 &
 
@@ -65,5 +85,4 @@ run_countdown() {
     done
     launch
 }
-# Replaced the hardcoded '10' parameter with the dynamic $COUNTDOWN variable
 run_countdown "$COUNTDOWN"
