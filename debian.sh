@@ -76,7 +76,6 @@ trap 'clr; pkill -9 -f termux.x11 2>/dev/null; killall -9 pulseaudio virgl_test_
 trap '' TSTP QUIT HUP
 launch() { clr; am start --user 0 -n com.termux.x11/com.termux.x11.MainActivity >/dev/null 2>&1; termux-toast "Debian Launched!"; echo "Debian Launched!"; exit; }
 run_countdown() { clr; am start --user 0 -n com.termux.x11/com.termux.x11.MainActivity >/dev/null 2>&1; echo "Success."; exit; }
-# Changed progress bar to dynamically adapt to terminal screen size (tput cols) instead of a fixed character width, keeping fill speed proportional to countdown time
 run_countdown() {
     local secs=$1
     local cols=$(tput cols 2>/dev/null || echo 80)
