@@ -3,21 +3,24 @@ set -e
 
 while :; do
     read -p "Enter username: " user </dev/tty
-    [[ "$user" =~ ^[a-z_][a-z0-9_-]*$ ]] && break
+    # REVERTED: Restored the original error echo
+    [[ "$user" =~ ^[a-z_][a-z0-9_-]*$ ]] && break || echo "Invalid username."
 done
 
 while :; do
-    read -s -p "Enter password for '$user': " pw </dev/tty; printf "\n"
-    read -s -p "Confirm password: " cpw </dev/tty; printf "\n"
-    [[ -n "$pw" && "$pw" == "$cpw" ]] && break
+    # REVERTED: Changed printf "\n" back to echo
+    read -s -p "Enter password for '$user': " pw </dev/tty; echo
+    read -s -p "Confirm password: " cpw </dev/tty; echo
+    # REVERTED: Restored the original error echo
+    [[ -n "$pw" && "$pw" == "$cpw" ]] && break || echo "Mismatch. Retry."
 done
 
-read -s -p "Enter root password (Press Enter to reuse user password): " r_pw </dev/tty; printf "\n"
+# REVERTED: Changed printf "\n" back to echo
+read -s -p "Enter root password (Press Enter to reuse user password): " r_pw </dev/tty; echo
 [[ -z "$r_pw" ]] && r_pw="$pw"
 
 start_time=$(date +%s)
 
-# ADDED: Install termux-api silently before the first toast to fix 'command not found' error
 pkg install -y termux-api >/dev/null 2>&1 || true
 
 termux-toast "Starting Debian installation for $user..."
@@ -45,11 +48,15 @@ pd login debian --shared-tmp -- sh -c '
     for g in storage wheel video; do groupadd -f "$g"; done
     useradd -m -g users -G wheel,audio,video,storage -s /bin/bash "$u"
     printf "root:%s\n%s:%s\n" "$rp" "$u" "$p" | chpasswd
-    printf "%s ALL=(ALL:ALL) ALL\n" "$u" >> /etc/sudoers
+    
+    # REVERTED: Changed printf back to the original echo
+    echo "$u ALL=(ALL:ALL) ALL" >> /etc/sudoers
 
     ln -sf "/usr/share/zoneinfo/$t" /etc/localtime || ln -sf /usr/share/zoneinfo/Etc/UTC /etc/localtime
     printf "en_US.UTF-8 UTF-8\n%s UTF-8\n" "$l" > /etc/locale.gen
-    locale-gen && printf "LANG=%s\n" "$l" > /etc/locale.conf
+    
+    # REVERTED: Changed printf back to the original echo
+    locale-gen && echo "LANG=$l" > /etc/locale.conf
 ' bash "$user" "$pw" "$r_pw" "$tz" "$loc"
 
 termux-toast "Debian base system configured"
