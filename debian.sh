@@ -1,18 +1,21 @@
 #!/bin/bash
 set -e
 
+# REMOVED: All comments from the previous version updates.
+# REMOVED: echo "Creating launcher script at $PREFIX/bin/debian..."
+
 while :; do
     read -p "Enter username: " user </dev/tty
-    [[ "$user" =~ ^[a-z_][a-z0-9_-]*$ ]] && break
+    [[ "$user" =~ ^[a-z_][a-z0-9_-]*$ ]] && break || echo "Invalid username."
 done
 
 while :; do
-    read -s -p "Enter password for '$user': " pw </dev/tty; printf "\n"
-    read -s -p "Confirm password: " cpw </dev/tty; printf "\n"
-    [[ -n "$pw" && "$pw" == "$cpw" ]] && break
+    read -s -p "Enter password for '$user': " pw </dev/tty; echo
+    read -s -p "Confirm password: " cpw </dev/tty; echo
+    [[ -n "$pw" && "$pw" == "$cpw" ]] && break || echo "Mismatch. Retry."
 done
 
-read -s -p "Enter root password (Press Enter to reuse user password): " r_pw </dev/tty; printf "\n"
+read -s -p "Enter root password (Press Enter to reuse user password): " r_pw </dev/tty; echo
 [[ -z "$r_pw" ]] && r_pw="$pw"
 
 # ADDED: Start the stopwatch timer right after user inputs are finished
@@ -43,11 +46,11 @@ pd login debian --shared-tmp -- sh -c '
     for g in storage wheel video; do groupadd -f "$g"; done
     useradd -m -g users -G wheel,audio,video,storage -s /bin/bash "$u"
     printf "root:%s\n%s:%s\n" "$rp" "$u" "$p" | chpasswd
-    printf "%s ALL=(ALL:ALL) ALL\n" "$u" >> /etc/sudoers
+    echo "$u ALL=(ALL:ALL) ALL" >> /etc/sudoers
 
     ln -sf "/usr/share/zoneinfo/$t" /etc/localtime || ln -sf /usr/share/zoneinfo/Etc/UTC /etc/localtime
     printf "en_US.UTF-8 UTF-8\n%s UTF-8\n" "$l" > /etc/locale.gen
-    locale-gen && printf "LANG=%s\n" "$l" > /etc/locale.conf
+    locale-gen && echo "LANG=$l" > /etc/locale.conf
 ' bash "$user" "$pw" "$r_pw" "$tz" "$loc"
 
 termux-toast "Debian base system configured"
@@ -69,10 +72,10 @@ cat << 'EOF' > "$PREFIX/bin/debian"
 tput civis; stty -echo
 trap 'tput cnorm; stty echo 2>/dev/null' EXIT
 clr() { printf "\033[3A\r\033[J"; }
-trap 'clr; exit 1' INT
+trap 'clr; echo "Aborted."; exit 1' INT
 trap '' TSTP QUIT HUP
 printf "Booting Debian...\n[%-30s] 10s\n[ENTER] Open now  [CTRL+C] Abort\n" ""
-launch() { clr; am start --user 0 -n com.termux.x11/com.termux.x11.MainActivity >/dev/null 2>&1; exit; }
+launch() { clr; am start --user 0 -n com.termux.x11/com.termux.x11.MainActivity >/dev/null 2>&1; echo "Success."; exit; }
 bar=""
 for i in $(seq 1 30); do
     bar+="#"
@@ -99,4 +102,4 @@ elapsed_sec=$((elapsed % 60))
 
 # CHANGED: Updated the completion outputs to include the stopwatch variables
 termux-toast "Installation Complete in ${elapsed_min}m ${elapsed_sec}s! Launch with 'debian'"
-printf "Installation Complete in ${elapsed_min}m ${elapsed_sec}s! You can now start Debian by typing 'debian' in your terminal.\n"
+echo "Installation Complete in ${elapsed_min}m ${elapsed_sec}s! You can now start Debian by typing 'debian' in your terminal."
