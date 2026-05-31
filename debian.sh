@@ -79,10 +79,10 @@ cat << 'EOF' > "$PREFIX/bin/debian"
 tput civis; stty -echo
 trap 'tput cnorm; stty echo 2>/dev/null' EXIT
 clr() { printf "\033[3A\r\033[J"; }
-trap 'clr; exit 1' INT
+trap 'clr; echo "Aborted."; exit 1' INT
 trap '' TSTP QUIT HUP
 printf "Booting Debian...\n[%-30s] 10s\n[ENTER] Open now  [CTRL+C] Abort\n" ""
-launch() { clr; am start --user 0 -n com.termux.x11/com.termux.x11.MainActivity >/dev/null 2>&1; exit; }
+launch() { clr; am start --user 0 -n com.termux.x11/com.termux.x11.MainActivity >/dev/null 2>&1; echo "Success."; exit; }
 bar=""
 for i in $(seq 1 30); do
     bar+="#"
